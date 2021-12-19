@@ -7,7 +7,9 @@
                 "deployOnSave": true,
 
                 "files": [
-                    "/*.js"
+                    "/*.js",
+                    "/*.html",
+                    "/data/*"
                 ],
 
                 "targets": [ "My S3 bucket" ]
