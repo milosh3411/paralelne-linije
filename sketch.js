@@ -7,7 +7,7 @@ var page1, page0, active_page;
 var b_fs_yes;
 var position;
 //common parameters for drawings:
-var radius, c1, c2;
+var radius, c1, c2, bi, p_min, p_max;
 var drawing;
 
 // Button class -----------------------------------------------------------------
@@ -80,6 +80,14 @@ function Drawing() {
   this.c2; // radius shift
   this.angle = []; // array of 3 angles
   this.phase = []; // array of 3 phases
+  this.bx1;        // bezier ancors
+  this.by1;
+  this.bx2;
+  this.by2;
+  this.bx3;
+  this.by3;
+  this.bx4;
+  this.by4;
 }
 
 Drawing.prototype.reset = function () {
@@ -88,9 +96,17 @@ Drawing.prototype.reset = function () {
   this.live = true;
   //project specific
   this.angle = [-180, -180, -180];
-  this.phase[0] = round(random(3, round(random(3, 17))) * 10) / 10;
-  this.phase[1] = round(random(3, round(random(3, 17))) * 10) / 10;
-  this.phase[2] = round(random(3, round(random(3, 17))) * 10) / 10;
+  this.phase[0] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
+  this.phase[1] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
+  this.phase[2] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
+  this.bx1 = round(random(-bi,bi));
+  this.by1 = round(random(-bi,bi));
+  this.bx2 = round(random(-bi,bi));
+  this.by2 = round(random(-bi,bi));
+  this.bx3 = round(random(-bi,bi));
+  this.by3 = round(random(-bi,bi));
+  this.bx4 = round(random(-bi,bi));
+  this.by4 = round(random(-bi,bi));
 };
 
 Drawing.prototype.increment = function () {
@@ -107,7 +123,7 @@ Drawing.prototype.increment = function () {
 };
 
 function setup() {
-  frameRate(5);
+  frameRate(15);
 
   w = displayWidth;
   h = displayHeight;
@@ -117,6 +133,10 @@ function setup() {
   zoom = false;
   position = [];
   drawing = [];
+
+  bi = 15; //bezier intensity (how far is the achor)
+  p_min = 3; //phase lower limit
+  p_max = 17; //phase upper limit
 
   if (deviceOrientation === "landscape") {
     radius = (0.8 * h) / 8;
@@ -205,8 +225,9 @@ function draw() {
 
     case page1:
       if (active_page.clear) {
+        noFill();
         background(17, 24, 19);
-        strokeWeight(1);
+        strokeWeight(2);
         stroke(72, 142, 153, 100);
         active_page.clear = false;
       }
@@ -217,26 +238,28 @@ function draw() {
         if (drawing[index].live) {
           push();
           translate(drawing[index].position.x, drawing[index].position.y);
-          line(
-            drawing[index].c1 *
-              drawing[index].radius *
-              sin(drawing[index].angle[0]),
-            drawing[index].c1 *
-              drawing[index].radius *
-              cos(drawing[index].angle[0]),
-            drawing[index].radius * sin(drawing[index].angle[1]),
-            drawing[index].radius * cos(drawing[index].angle[1])
-          );
-          line(
-            drawing[index].radius * sin(drawing[index].angle[1]),
-            drawing[index].radius * cos(drawing[index].angle[1]),
-            drawing[index].c2 *
-              drawing[index].radius *
-              sin(drawing[index].angle[2]),
-            drawing[index].c2 *
-              drawing[index].radius *
-              cos(drawing[index].angle[2])
-          );
+          var x1,y1,x2,y2;
+          var x3,y3,x4,y4;
+          var bx1, by1, bx2, by2, bx3, by3, bx4, by4;
+          x1 = drawing[index].c1 *drawing[index].radius *sin(drawing[index].angle[0]);
+          y1 = drawing[index].c1 *drawing[index].radius *cos(drawing[index].angle[0]);
+          x2 = drawing[index].radius * sin(drawing[index].angle[1]);
+          y2 = drawing[index].radius * cos(drawing[index].angle[1]);
+          x3 = drawing[index].radius * sin(drawing[index].angle[1]);
+          y3 = drawing[index].radius * cos(drawing[index].angle[1]);
+          x4 = drawing[index].c2 *drawing[index].radius *sin(drawing[index].angle[2]);
+          y4 = drawing[index].c2 *drawing[index].radius *cos(drawing[index].angle[2]);
+          bx1 = drawing[index].bx1;
+          by1 = drawing[index].by1;
+          bx2 = drawing[index].bx2;
+          by2 = drawing[index].by2;
+          bx3 = drawing[index].bx3;
+          by3 = drawing[index].by3;
+          bx4 = drawing[index].bx4;
+          by4 = drawing[index].by4;
+
+          bezier(x1,y1,x1 + bx1,y1 + by1, x2 + bx2, y2 + by2,x2,y2);
+          bezier(x3,y3,x3 + bx3,y3 + by3, x4 + bx4, y4 + by4,x4,y4);
           pop();
           drawing[index].increment();
         }
