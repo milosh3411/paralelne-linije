@@ -6,10 +6,11 @@ var zoom;
 var page1, page0, active_page;
 var b_fs_yes;
 var position;
+var text_on;
 //common parameters for drawings:
 var radius, c1, c2, bi, p_min, p_max;
-var drawing,selected;
-var step;
+var drawing, selected;
+var step, horizon;
 
 // Button class -----------------------------------------------------------------
 function Button(x, y, r, str) {
@@ -81,6 +82,7 @@ function Drawing() {
   this.c2; // radius shift
   this.angle = []; // array of 3 angles
   this.phase = []; // array of 3 phases
+  this.stop_angle; //upper limit in draw()
   this.bx1; // bezier ancors
   this.by1;
   this.bx2;
@@ -100,6 +102,7 @@ Drawing.prototype.reset = function () {
   this.phase[0] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
   this.phase[1] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
   this.phase[2] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
+  this.stop_angle = 180;
   this.bx1 = round(random(-bi, bi));
   this.by1 = round(random(-bi, bi));
   this.bx2 = round(random(-bi, bi));
@@ -110,7 +113,8 @@ Drawing.prototype.reset = function () {
   this.by4 = round(random(-bi, bi));
 };
 
-Drawing.prototype.reset_soft = function () {   //preserve phase[] and bezier values
+Drawing.prototype.reset_soft = function () {
+  //preserve phase[] and bezier values
   //generic
   this.counter = 0;
   this.live = true;
@@ -118,24 +122,25 @@ Drawing.prototype.reset_soft = function () {   //preserve phase[] and bezier val
   this.angle = [-180, -180, -180];
 };
 
-
 Drawing.prototype.copy = function (source) {
-  this.phase = [source.phase[0],source.phase[1],source.phase[2]]
-  this.bx1 = source.bx1
-  this.by1 = source.by1 
-  this.bx2 = source.bx2 
-  this.by2 = source.by2 
-  this.bx3 = source.bx3 
-  this.by3 = source.by3 
-  this.bx4 = source.bx4 
-  this.by4 = source.by4 
+  this.phase = [source.phase[0], source.phase[1], source.phase[2]];
+  this.stop_angle = source.stop_angle;
+  this.bx1 = source.bx1;
+  this.by1 = source.by1;
+  this.bx2 = source.bx2;
+  this.by2 = source.by2;
+  this.bx3 = source.bx3;
+  this.by3 = source.by3;
+  this.bx4 = source.bx4;
+  this.by4 = source.by4;
 };
-
-
 
 Drawing.prototype.increment = function () {
   if (this.live) {
-    if (this.counter * min(this.phase[0], this.phase[1], this.phase[2]) < 180) {
+    if (
+      this.counter * min(this.phase[0], this.phase[1], this.phase[2]) <
+      this.stop_angle
+    ) {
       this.angle[0] += this.phase[0];
       this.angle[1] += this.phase[1];
       this.angle[2] += this.phase[2];
@@ -151,7 +156,9 @@ function setup() {
 
   w = displayWidth;
   h = displayHeight;
-  createCanvas(w, h);
+  createCanvas(w, h)
+
+  text_on = false;
 
   //noLoop();
   zoom = false;
@@ -162,26 +169,8 @@ function setup() {
   p_min = 3; //phase lower limit
   p_max = 17; //phase upper limit
 
-  step = .1;
-
-  if (deviceOrientation === "landscape") {
-    radius = h / 6;
-    position[0] = createVector(1 * ceil(w / 4), ceil(h / 3 ));
-    position[1] = createVector(1 * ceil(w / 4), ceil(2*h / 3));
-    position[2] = createVector(2 * ceil(w / 4), ceil(h / 3));
-    position[3] = createVector(2 * ceil(w / 4), ceil(2*h / 3));
-    position[4] = createVector(3 * ceil(w / 4), ceil(h / 3));
-    position[5] = createVector(3 * ceil(w / 4), ceil(2*h / 3));
-
-  } else {
-    radius = w / 6;
-    position[0] = createVector(1 * ceil(w / 3), ceil(h / 4 ));
-    position[1] = createVector(1 * ceil(w / 3), ceil(2*h / 4));
-    position[2] = createVector(1 * ceil(w / 3), ceil(3*h / 4));
-    position[3] = createVector(2 * ceil(w / 3), ceil(h / 4 ));
-    position[4] = createVector(2 * ceil(w / 3), ceil(2*h / 4));
-    position[5] = createVector(2 * ceil(w / 3), ceil(3*h / 4));
-  }
+  step = 0.1;
+  horizon = 3; //number of drawings to be displayed in front (or behind) the selected drawing per dimension axis
 
   if (
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -191,11 +180,10 @@ function setup() {
     mobile = true;
   }
 
-  // page0 - enteradius fullscreen-----------------------------------------------------------------
+  // page0 - enter fullscreen-----------------------------------------------------------------
 
   //button
   b_fs_yes = new Button(0.5 * w, 0.5 * h, 0.1 * h, "");
-
   b_fs_yes.draw = function () {
     noStroke();
     fill(147, 162, 155, 100);
@@ -220,9 +208,125 @@ function setup() {
 
   active_page = page0;
 
-  // page1 - main page-----------------------------------------------------------------
+  // page1 - start page-----------------------------------------------------------------
   page1 = new Page();
   page1.clear = true;
+  setup_page1();
+
+  // page2 - explore page-----------------------------------------------------------------
+  page2 = new Page();
+  page2.clear = true;
+
+  // To save parameters of selected object
+  selected = new Drawing();
+  selected.reset();
+}
+function setup_page1() {
+  position = [];
+  if (deviceOrientation === "landscape") {
+    radius = h / 6;
+    position[0] = createVector(1 * ceil(w / 4), ceil(h / 3));
+    position[1] = createVector(1 * ceil(w / 4), ceil((2 * h) / 3));
+    position[2] = createVector(2 * ceil(w / 4), ceil(h / 3));
+    position[3] = createVector(2 * ceil(w / 4), ceil((2 * h) / 3));
+    position[4] = createVector(3 * ceil(w / 4), ceil(h / 3));
+    position[5] = createVector(3 * ceil(w / 4), ceil((2 * h) / 3));
+  } else {
+    radius = w / 6;
+    position[0] = createVector(1 * ceil(w / 3), ceil(h / 4));
+    position[1] = createVector(1 * ceil(w / 3), ceil((2 * h) / 4));
+    position[2] = createVector(1 * ceil(w / 3), ceil((3 * h) / 4));
+    position[3] = createVector(2 * ceil(w / 3), ceil(h / 4));
+    position[4] = createVector(2 * ceil(w / 3), ceil((2 * h) / 4));
+    position[5] = createVector(2 * ceil(w / 3), ceil((3 * h) / 4));
+  }
+
+  drawing = [];
+  for (let index = 0; index < position.length; index++) {
+    drawing[index] = new Drawing();
+    drawing[index].reset();
+    drawing[index].radius = radius;
+    drawing[index].position = position[index];
+    drawing[index].c1 = 0.5;
+    drawing[index].c2 = 1 + (1 - drawing[index].c1) / 1.618033988749;
+  }
+}
+function setup_page2() {
+  position = [];
+  drawing = [];
+  var a, b;
+
+  if (deviceOrientation === "landscape") {
+    a = w;
+    b = h;
+  } else {
+    a = h;
+    b = w;
+  }
+
+  radius = b / (2 * (2 * horizon + 2));
+  position[0] = createVector(ceil(a / 2), ceil(b / 2)); //central element
+  var index = 1;
+  //vertical axis; stop_angle dimension
+  for (let i = 0; i < 2 * horizon; i++) {
+    if (i < horizon) {
+      position[index] = createVector(
+        ceil(a / 2),
+        (i + 1) * ceil(b / (2 * horizon + 2))
+      );
+    } else {
+      position[index] = createVector(
+        ceil(a / 2),
+        (i + 2) * ceil(b / (2 * horizon + 2))
+      );
+    }
+    index++;
+  }
+  //horizontal axis; phase[0] dimension
+  for (let i = 0; i < 2 * horizon; i++) {
+    if (i < horizon) {
+      position[index] = createVector(
+        (i + 1) * ceil(a / (2 * horizon + 2)),
+        ceil(b / 2)
+      );
+    } else {
+      position[index] = createVector(
+        (i + 2) * ceil(a / (2 * horizon + 2)),
+        ceil(b / 2)
+      );
+    }
+    index++;
+  }
+  //top left to bottom right; phase[1] dimension
+  for (let i = 0; i < 2 * horizon; i++) {
+    if (i < horizon) {
+      position[index] = createVector(
+        ceil(a / 2 - ((horizon - i) * a) / ((2 * horizon + 2) * sqrt(2))),
+        ceil(b / 2 - ((horizon - i) * b) / ((2 * horizon + 2) * sqrt(2)))
+      );
+    } else {
+      position[index] = createVector(
+        ceil(a / 2 + ((i + 1 - horizon) * a) / ((2 * horizon + 2) * sqrt(2))),
+        ceil(b / 2 + ((i + 1 - horizon) * b) / ((2 * horizon + 2) * sqrt(2)))
+      );
+    }
+    index++;
+  }
+  //top right to bottom left; phase[2] dimension
+  for (let i = 0; i < 2 * horizon; i++) {
+    if (i < horizon) {
+      position[index] = createVector(
+        ceil(a / 2 + ((horizon - i) * a) / ((2 * horizon + 2) * sqrt(2))),
+        ceil(b / 2 - ((horizon - i) * b) / ((2 * horizon + 2) * sqrt(2)))
+      );
+    } else {
+      position[index] = createVector(
+        ceil(a / 2 - ((i + 1 - horizon) * a) / ((2 * horizon + 2) * sqrt(2))),
+        ceil(b / 2 + ((i + 1 - horizon) * b) / ((2 * horizon + 2) * sqrt(2)))
+      );
+    }
+    index++;
+  }
 
   for (let index = 0; index < position.length; index++) {
     drawing[index] = new Drawing();
@@ -230,15 +334,12 @@ function setup() {
     drawing[index].radius = radius;
     drawing[index].position = position[index];
     drawing[index].c1 = 0.5;
-    drawing[index].c2 = 1 + (1 - drawing[index].c1)/1.618033988749;
+    drawing[index].c2 = 1 + (1 - drawing[index].c1) / 1.618033988749;
   }
-// To save parameters of selected object
-  selected = new Drawing();
-  selected.reset();
 }
 
 function draw() {
-  let time = millis();
+  //let time = millis();
   switch (active_page) {
     case page0:
       if (active_page.clear) {
@@ -249,26 +350,29 @@ function draw() {
       break;
 
     case page1:
+    case page2:
       if (active_page.clear) {
         background(17, 24, 19);
         noStroke();
         fill(72, 142, 153);
-        for (let index = 0; index < position.length; index++) {
-          text(
-            "phase0: " + drawing[index].phase[0],
-            position[index].x + 1.5 * radius,
-            position[index].y + radius - 30
-          );
-          text(
-            "phase1: " + drawing[index].phase[1],
-            position[index].x + 1.5 * radius,
-            position[index].y + radius - 15
-          );
-          text(
-            "phase2: " + drawing[index].phase[2],
-            position[index].x + 1.5 * radius,
-            position[index].y + radius
-          );
+        if (text_on) {
+          for (let index = 0; index < position.length; index++) {
+            text(
+              "phase0: " + drawing[index].phase[0],
+              position[index].x + 1.5 * radius,
+              position[index].y + radius - 30
+            );
+            text(
+              "phase1: " + drawing[index].phase[1],
+              position[index].x + 1.5 * radius,
+              position[index].y + radius - 15
+            );
+            text(
+              "phase2: " + drawing[index].phase[2],
+              position[index].x + 1.5 * radius,
+              position[index].y + radius
+            );
+          } 
         }
         strokeWeight(1);
         stroke(72, 142, 153, 100);
@@ -334,30 +438,38 @@ function mouseReleased() {
   ) {
     var s = find_selected();
     selected.copy(drawing[s]);
-    for (let index = 0; index < position.length; index++) {
-      drawing[index].copy(selected);
-      drawing[index].reset_soft();
-      switch (index) {
-        case 0:
-          drawing[index].phase[0] += step;
-          break;
-        case 1:
-          drawing[index].phase[0] -= step;
-          break;
-        case 2:
-          drawing[index].phase[1] += step;
-          break;
-        case 3:
-          drawing[index].phase[1] -= step;
-          break;
-        case 4:
-          drawing[index].phase[2] += step;
-          break;
-        case 5:
-          drawing[index].phase[2] -= step;
-          break;
-        default:
-          break;
+    if (active_page == page1) {
+      active_page = page2;
+      setup_page2();
+    }
+    if (active_page == page2) {
+      drawing[0].copy(selected);
+      drawing[0].reset_soft();
+      var index = 1;
+      for (let i = 0; i < 4; i++) {
+        //for each of 4 axis
+        for (let j = 0; j < 2 * horizon; j++) {
+          drawing[index].copy(selected);
+          drawing[index].reset_soft();
+          if (j < horizon) {
+            //positive side of axis...
+            if (i != 0) {
+              //for phase[] dimensions (first three axis)
+              drawing[index].phase[i - 1] += (horizon - j) * step;
+            } else {
+              drawing[index].stop_angle += (horizon - j) * step * 100;
+            }
+          } else {
+            //negative side of axis...
+            if (i != 0) {
+              //for phase[] dimensions (first three axis)
+              drawing[index].phase[i - 1] += (horizon - j - 1) * step;
+            } else {
+              drawing[index].stop_angle += (horizon - j - 1) * step * 100;
+            }
+          }
+          index++;
+        }
       }
     }
     active_page.clear = true;
