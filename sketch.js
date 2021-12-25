@@ -1,6 +1,7 @@
 // Global vars-------------------------------------------------------
 var w;
 var h;
+var a,b; //width and height depending on device orientation
 var mobile;
 var zoom;
 var page1, page0, active_page;
@@ -10,6 +11,7 @@ var text_on;
 //common parameters for drawings:
 var radius, c1, c2, bi, p_min, p_max;
 var drawing, selected;
+var seed_row, seed_column;  //number of rows and columns in the seed page (page1)
 var step, horizon;
 
 // Button class -----------------------------------------------------------------
@@ -40,16 +42,16 @@ function Menu() {
 }
 
 Menu.prototype.draw = function () {
-  for (b = 0; b < this.button.length; b++) {
-    this.button[b].draw();
+  for (bt = 0; bt < this.button.length; bt++) {
+    this.button[bt].draw();
   }
 };
 
 Menu.prototype.checkButtons = function (x, y) {
-  for (b = 0; b < this.button.length; b++) {
-    if (this.button[b].is_pressed(x, y)) {
-      this.button[b].action();
-      return b;
+  for (bt = 0; bt < this.button.length; bt++) {
+    if (this.button[bt].is_pressed(x, y)) {
+      this.button[bt].action();
+      return bt;
     }
   }
   return null;
@@ -59,7 +61,7 @@ Menu.prototype.checkButtons = function (x, y) {
 function Page() {
   this.menu; //Menu for this page
   this.active; //is it a currently active page? boolean
-  this.clear; //if "true" draw() will clearadius the page contents: background, stroke, fill...
+  this.clear; //if "true" draw() will clear the page contents: background, stroke, fill...
   this.pageid; //ID of the page
 }
 
@@ -138,7 +140,7 @@ Drawing.prototype.copy = function (source) {
 Drawing.prototype.increment = function () {
   if (this.live) {
     if (
-      this.counter * min(this.phase[0], this.phase[1], this.phase[2]) <
+      this.counter * min(abs(this.phase[0]), abs(this.phase[1]), abs(this.phase[2])) <
       this.stop_angle
     ) {
       this.angle[0] += this.phase[0];
@@ -158,10 +160,19 @@ function setup() {
   h = displayHeight;
   createCanvas(w, h)
 
+  if (deviceOrientation === "landscape") {
+    a = w;
+    b = h;
+  } else {
+    a = h;
+    b = w;
+  }
+
   text_on = false;
 
-  //noLoop();
-  zoom = false;
+  seed_row = 5;
+  seed_column = 7;
+
   position = [];
   drawing = [];
 
@@ -169,16 +180,16 @@ function setup() {
   p_min = 3; //phase lower limit
   p_max = 17; //phase upper limit
 
-  step = 0.1;
+  step = 0.5;
   horizon = 3; //number of drawings to be displayed in front (or behind) the selected drawing per dimension axis
 
-  if (
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    )
-  ) {
-    mobile = true;
-  }
+  //if (
+  //  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+  //    navigator.userAgent
+  //  )
+  //) {
+  //  mobile = true;
+  //}
 
   // page0 - enter fullscreen-----------------------------------------------------------------
 
@@ -196,25 +207,37 @@ function setup() {
     redraw();
   };
 
-  // page0 menu
+  // page0 - intro page-----------------------------------------------------------------
   menu_p0 = new Menu();
   menu_p0.button = [b_fs_yes];
-
-  //page0
   page0 = new Page();
-
   page0.menu = menu_p0;
   page0.clear = true;
-
   active_page = page0;
 
-  // page1 - start page-----------------------------------------------------------------
+  // page1 - seed page-----------------------------------------------------------------
   page1 = new Page();
   page1.clear = true;
   setup_page1();
 
   // page2 - explore page-----------------------------------------------------------------
+  b_reset = new Button(0.9 * a, 0.1 * b, 0.1 * b, "");
+  b_reset.draw = function () {
+    noStroke();
+    fill(147, 162, 155, 100);
+    ellipse(this.x, this.y, this.radius);
+  };
+
+  b_reset.action = function () {
+    setup_page1();
+    page1.clear = true;
+    active_page = page1;
+    redraw();
+  };
+  menu_p2 = new Menu();
+  menu_p2.button = [b_reset];
   page2 = new Page();
+  page2.menu = menu_p2;
   page2.clear = true;
 
   // To save parameters of selected object
@@ -223,25 +246,16 @@ function setup() {
 }
 function setup_page1() {
   position = [];
-  if (deviceOrientation === "landscape") {
-    radius = h / 6;
-    position[0] = createVector(1 * ceil(w / 4), ceil(h / 3));
-    position[1] = createVector(1 * ceil(w / 4), ceil((2 * h) / 3));
-    position[2] = createVector(2 * ceil(w / 4), ceil(h / 3));
-    position[3] = createVector(2 * ceil(w / 4), ceil((2 * h) / 3));
-    position[4] = createVector(3 * ceil(w / 4), ceil(h / 3));
-    position[5] = createVector(3 * ceil(w / 4), ceil((2 * h) / 3));
-  } else {
-    radius = w / 6;
-    position[0] = createVector(1 * ceil(w / 3), ceil(h / 4));
-    position[1] = createVector(1 * ceil(w / 3), ceil((2 * h) / 4));
-    position[2] = createVector(1 * ceil(w / 3), ceil((3 * h) / 4));
-    position[3] = createVector(2 * ceil(w / 3), ceil(h / 4));
-    position[4] = createVector(2 * ceil(w / 3), ceil((2 * h) / 4));
-    position[5] = createVector(2 * ceil(w / 3), ceil((3 * h) / 4));
+  drawing = [];
+  var index = 0;
+  radius = min(a,b)/((max(seed_row,seed_column)+1)*2);
+  for (let i = 0; i < seed_row; i++) {
+    for (let j = 0; j < seed_column; j++) {
+      position[index] = createVector(ceil((j+1)*a/(seed_column+1)),ceil((i+1)*b/(seed_row+1)));
+      index++;
+    }
   }
 
-  drawing = [];
   for (let index = 0; index < position.length; index++) {
     drawing[index] = new Drawing();
     drawing[index].reset();
@@ -254,15 +268,6 @@ function setup_page1() {
 function setup_page2() {
   position = [];
   drawing = [];
-  var a, b;
-
-  if (deviceOrientation === "landscape") {
-    a = w;
-    b = h;
-  } else {
-    a = h;
-    b = w;
-  }
 
   radius = b / (2 * (2 * horizon + 2));
   position[0] = createVector(ceil(a / 2), ceil(b / 2)); //central element
@@ -374,13 +379,12 @@ function draw() {
             );
           } 
         }
-        strokeWeight(1);
-        stroke(72, 142, 153, 100);
-        noFill();
         active_page.clear = false;
       }
       active_page.drawMenu();
-
+      strokeWeight(1);
+      stroke(72, 142, 153, 100);
+      noFill();
       //project specific draw
       for (let index = 0; index < position.length; index++) {
         if (drawing[index].live) {
