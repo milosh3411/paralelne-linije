@@ -8,7 +8,8 @@ var b_fs_yes;
 var position;
 //common parameters for drawings:
 var radius, c1, c2, bi, p_min, p_max;
-var drawing;
+var drawing,selected;
+var step;
 
 // Button class -----------------------------------------------------------------
 function Button(x, y, r, str) {
@@ -80,7 +81,7 @@ function Drawing() {
   this.c2; // radius shift
   this.angle = []; // array of 3 angles
   this.phase = []; // array of 3 phases
-  this.bx1;        // bezier ancors
+  this.bx1; // bezier ancors
   this.by1;
   this.bx2;
   this.by2;
@@ -99,15 +100,38 @@ Drawing.prototype.reset = function () {
   this.phase[0] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
   this.phase[1] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
   this.phase[2] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
-  this.bx1 = round(random(-bi,bi));
-  this.by1 = round(random(-bi,bi));
-  this.bx2 = round(random(-bi,bi));
-  this.by2 = round(random(-bi,bi));
-  this.bx3 = round(random(-bi,bi));
-  this.by3 = round(random(-bi,bi));
-  this.bx4 = round(random(-bi,bi));
-  this.by4 = round(random(-bi,bi));
+  this.bx1 = round(random(-bi, bi));
+  this.by1 = round(random(-bi, bi));
+  this.bx2 = round(random(-bi, bi));
+  this.by2 = round(random(-bi, bi));
+  this.bx3 = round(random(-bi, bi));
+  this.by3 = round(random(-bi, bi));
+  this.bx4 = round(random(-bi, bi));
+  this.by4 = round(random(-bi, bi));
 };
+
+Drawing.prototype.reset_soft = function () {   //preserve phase[] and bezier values
+  //generic
+  this.counter = 0;
+  this.live = true;
+  //project specific
+  this.angle = [-180, -180, -180];
+};
+
+
+Drawing.prototype.copy = function (source) {
+  this.phase = [source.phase[0],source.phase[1],source.phase[2]]
+  this.bx1 = source.bx1
+  this.by1 = source.by1 
+  this.bx2 = source.bx2 
+  this.by2 = source.by2 
+  this.bx3 = source.bx3 
+  this.by3 = source.by3 
+  this.bx4 = source.bx4 
+  this.by4 = source.by4 
+};
+
+
 
 Drawing.prototype.increment = function () {
   if (this.live) {
@@ -123,7 +147,7 @@ Drawing.prototype.increment = function () {
 };
 
 function setup() {
-  frameRate(15);
+  //frameRate(25);
 
   w = displayWidth;
   h = displayHeight;
@@ -134,32 +158,29 @@ function setup() {
   position = [];
   drawing = [];
 
-  bi = 15; //bezier intensity (how far is the achor)
+  bi = 25; //bezier intensity (how far is the achor)
   p_min = 3; //phase lower limit
   p_max = 17; //phase upper limit
 
+  step = .1;
+
   if (deviceOrientation === "landscape") {
-    radius = (0.8 * h) / 8;
-    position[0] = createVector(1 * ceil(w / 4), ceil(h / 8 + radius / 2));
-    position[1] = createVector(1 * ceil(w / 4), ceil(h / 2));
-    position[2] = createVector(1 * ceil(w / 4), ceil((7 * h) / 8 - radius / 2));
-    position[3] = createVector(2 * ceil(w / 4), ceil(h / 8 + radius / 2));
-    position[4] = createVector(2 * ceil(w / 4), ceil(h / 2));
-    position[5] = createVector(2 * ceil(w / 4), ceil((7 * h) / 8 - radius / 2));
-    position[6] = createVector(3 * ceil(w / 4), ceil(h / 8 + radius / 2));
-    position[7] = createVector(3 * ceil(w / 4), ceil(h / 2));
-    position[8] = createVector(3 * ceil(w / 4), ceil((7 * h) / 8 - radius / 2));
+    radius = h / 6;
+    position[0] = createVector(1 * ceil(w / 4), ceil(h / 3 ));
+    position[1] = createVector(1 * ceil(w / 4), ceil(2*h / 3));
+    position[2] = createVector(2 * ceil(w / 4), ceil(h / 3));
+    position[3] = createVector(2 * ceil(w / 4), ceil(2*h / 3));
+    position[4] = createVector(3 * ceil(w / 4), ceil(h / 3));
+    position[5] = createVector(3 * ceil(w / 4), ceil(2*h / 3));
+
   } else {
-    //radius = (0.8 * w) / 6;
-    //position[0] = createVector(1 * ceil(w / 3), ceil(h / 8 + radius / 2));
-    //position[1] = createVector(1 * ceil(w / 3), ceil(h / 2));
-    //position[2] = createVector(1 * ceil(w / 3), ceil((7 * h) / 8 - radius / 2));
-    //position[3] = createVector(2 * ceil(w / 3), ceil(h / 8 + radius / 2));
-    //position[4] = createVector(2 * ceil(w / 3), ceil(h / 2));
-    //position[5] = createVector(2 * ceil(w / 3), ceil((7 * h) / 8 - radius / 2));
-    radius = (0.5 * w) / 2;
-    position[0] = createVector(1 * ceil(w / 2), ceil(h / 5 + radius / 4));
-    position[1] = createVector(1 * ceil(w / 2), ceil((3 * h) / 5 + radius / 4));
+    radius = w / 6;
+    position[0] = createVector(1 * ceil(w / 3), ceil(h / 4 ));
+    position[1] = createVector(1 * ceil(w / 3), ceil(2*h / 4));
+    position[2] = createVector(1 * ceil(w / 3), ceil(3*h / 4));
+    position[3] = createVector(2 * ceil(w / 3), ceil(h / 4 ));
+    position[4] = createVector(2 * ceil(w / 3), ceil(2*h / 4));
+    position[5] = createVector(2 * ceil(w / 3), ceil(3*h / 4));
   }
 
   if (
@@ -209,11 +230,15 @@ function setup() {
     drawing[index].radius = radius;
     drawing[index].position = position[index];
     drawing[index].c1 = 0.5;
-    drawing[index].c2 = 1.2;
+    drawing[index].c2 = 1 + (1 - drawing[index].c1)/1.618033988749;
   }
+// To save parameters of selected object
+  selected = new Drawing();
+  selected.reset();
 }
 
 function draw() {
+  let time = millis();
   switch (active_page) {
     case page0:
       if (active_page.clear) {
@@ -225,10 +250,29 @@ function draw() {
 
     case page1:
       if (active_page.clear) {
-        noFill();
         background(17, 24, 19);
-        strokeWeight(2);
+        noStroke();
+        fill(72, 142, 153);
+        for (let index = 0; index < position.length; index++) {
+          text(
+            "phase0: " + drawing[index].phase[0],
+            position[index].x + 1.5 * radius,
+            position[index].y + radius - 30
+          );
+          text(
+            "phase1: " + drawing[index].phase[1],
+            position[index].x + 1.5 * radius,
+            position[index].y + radius - 15
+          );
+          text(
+            "phase2: " + drawing[index].phase[2],
+            position[index].x + 1.5 * radius,
+            position[index].y + radius
+          );
+        }
+        strokeWeight(1);
         stroke(72, 142, 153, 100);
+        noFill();
         active_page.clear = false;
       }
       active_page.drawMenu();
@@ -238,17 +282,29 @@ function draw() {
         if (drawing[index].live) {
           push();
           translate(drawing[index].position.x, drawing[index].position.y);
-          var x1,y1,x2,y2;
-          var x3,y3,x4,y4;
+          var x1, y1, x2, y2;
+          var x3, y3, x4, y4;
           var bx1, by1, bx2, by2, bx3, by3, bx4, by4;
-          x1 = drawing[index].c1 *drawing[index].radius *sin(drawing[index].angle[0]);
-          y1 = drawing[index].c1 *drawing[index].radius *cos(drawing[index].angle[0]);
+          x1 =
+            drawing[index].c1 *
+            drawing[index].radius *
+            sin(drawing[index].angle[0]);
+          y1 =
+            drawing[index].c1 *
+            drawing[index].radius *
+            cos(drawing[index].angle[0]);
           x2 = drawing[index].radius * sin(drawing[index].angle[1]);
           y2 = drawing[index].radius * cos(drawing[index].angle[1]);
           x3 = drawing[index].radius * sin(drawing[index].angle[1]);
           y3 = drawing[index].radius * cos(drawing[index].angle[1]);
-          x4 = drawing[index].c2 *drawing[index].radius *sin(drawing[index].angle[2]);
-          y4 = drawing[index].c2 *drawing[index].radius *cos(drawing[index].angle[2]);
+          x4 =
+            drawing[index].c2 *
+            drawing[index].radius *
+            sin(drawing[index].angle[2]);
+          y4 =
+            drawing[index].c2 *
+            drawing[index].radius *
+            cos(drawing[index].angle[2]);
           bx1 = drawing[index].bx1;
           by1 = drawing[index].by1;
           bx2 = drawing[index].bx2;
@@ -258,8 +314,8 @@ function draw() {
           bx4 = drawing[index].bx4;
           by4 = drawing[index].by4;
 
-          bezier(x1,y1,x1 + bx1,y1 + by1, x2 + bx2, y2 + by2,x2,y2);
-          bezier(x3,y3,x3 + bx3,y3 + by3, x4 + bx4, y4 + by4,x4,y4);
+          bezier(x1, y1, x1 + bx1, y1 + by1, x2 + bx2, y2 + by2, x2, y2);
+          bezier(x3, y3, x3 + bx3, y3 + by3, x4 + bx4, y4 + by4, x4, y4);
           pop();
           drawing[index].increment();
         }
@@ -271,43 +327,57 @@ function draw() {
   }
 }
 
-//function keyPressed() {
-//  //console.log(keyCode);
-//  if (keyCode === ENTER) {
-//    zoom = false;
-//    if (!isLooping()) {
-//      loop();
-//    }
-//    draw();
-//  } else if (keyCode === 83) {
-//    save("pletenica.jpg");
-//  }
-//  //  return false;
-//}
-
 function mouseReleased() {
-  if (!active_page.menu || active_page.menu.checkButtons(mouseX, mouseY) === null) {
+  if (
+    !active_page.menu ||
+    active_page.menu.checkButtons(mouseX, mouseY) === null
+  ) {
+    var s = find_selected();
+    selected.copy(drawing[s]);
     for (let index = 0; index < position.length; index++) {
-      drawing[index].reset();
-      page1.clear = true;
+      drawing[index].copy(selected);
+      drawing[index].reset_soft();
+      switch (index) {
+        case 0:
+          drawing[index].phase[0] += step;
+          break;
+        case 1:
+          drawing[index].phase[0] -= step;
+          break;
+        case 2:
+          drawing[index].phase[1] += step;
+          break;
+        case 3:
+          drawing[index].phase[1] -= step;
+          break;
+        case 4:
+          drawing[index].phase[2] += step;
+          break;
+        case 5:
+          drawing[index].phase[2] -= step;
+          break;
+        default:
+          break;
+      }
     }
+    active_page.clear = true;
     return false;
   }
 }
 
-//function selected() {
-//  var d = dist(mouseX, mouseY, position[0].x, position[0].y);
-//  var d0;
-//  var sel = 0;
-//  for (k = 1; k < 9; k++) {
-//    //console.log("k = " + k);
-//    d0 = dist(mouseX, mouseY, position[k].x, position[k].y);
-//    //console.log("d0=" + d0 + "  d=" + d);
-//    if (d0 < d) {
-//      d = d0;
-//      sel = k;
-//    }
-//  }
-//  return sel;
-//}
+function find_selected() {
+  var d = dist(mouseX, mouseY, position[0].x, position[0].y);
+  var d0;
+  var sel = 0;
+  for (k = 1; k < position.length; k++) {
+    //console.log("k = " + k);
+    d0 = dist(mouseX, mouseY, position[k].x, position[k].y);
+    //console.log("d0=" + d0 + "  d=" + d);
+    if (d0 < d) {
+      d = d0;
+      sel = k;
+    }
+  }
+  return sel;
+}
 //
