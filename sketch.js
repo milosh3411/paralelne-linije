@@ -1,7 +1,7 @@
 // Global vars-------------------------------------------------------
 var w;
 var h;
-var a,b; //width and height depending on device orientation
+var a, b; //width and height depending on device orientation
 var mobile;
 var zoom;
 var page1, page0, active_page;
@@ -11,7 +11,7 @@ var text_on;
 //common parameters for drawings:
 var radius, c1, c2, bi, p_min, p_max;
 var drawing, selected;
-var seed_row, seed_column;  //number of rows and columns in the seed page (page1)
+var seed_row, seed_column; //number of rows and columns in the seed page (page1)
 var step, horizon;
 
 // Button class -----------------------------------------------------------------
@@ -105,14 +105,15 @@ Drawing.prototype.reset = function () {
   this.phase[1] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
   this.phase[2] = round(random(p_min, round(random(p_min, p_max))) * 10) / 10;
   this.stop_angle = 180;
-  this.bx1 = round(random(-bi, bi));
-  this.by1 = round(random(-bi, bi));
-  this.bx2 = round(random(-bi, bi));
-  this.by2 = round(random(-bi, bi));
-  this.bx3 = round(random(-bi, bi));
-  this.by3 = round(random(-bi, bi));
-  this.bx4 = round(random(-bi, bi));
-  this.by4 = round(random(-bi, bi));
+  this.radius = 50;
+  this.bx1 = round(random(-bi*this.radius, bi*this.radius));
+  this.by1 = round(random(-bi*this.radius, bi*this.radius));
+  this.bx2 = round(random(-bi*this.radius, bi*this.radius));
+  this.by2 = round(random(-bi*this.radius, bi*this.radius));
+  this.bx3 = round(random(-bi*this.radius, bi*this.radius));
+  this.by3 = round(random(-bi*this.radius, bi*this.radius));
+  this.bx4 = round(random(-bi*this.radius, bi*this.radius));
+  this.by4 = round(random(-bi*this.radius, bi*this.radius));
 };
 
 Drawing.prototype.reset_soft = function () {
@@ -140,7 +141,8 @@ Drawing.prototype.copy = function (source) {
 Drawing.prototype.increment = function () {
   if (this.live) {
     if (
-      this.counter * min(abs(this.phase[0]), abs(this.phase[1]), abs(this.phase[2])) <
+      this.counter *
+        min(abs(this.phase[0]), abs(this.phase[1]), abs(this.phase[2])) <
       this.stop_angle
     ) {
       this.angle[0] += this.phase[0];
@@ -158,7 +160,7 @@ function setup() {
 
   w = displayWidth;
   h = displayHeight;
-  createCanvas(w, h)
+  createCanvas(w, h);
 
   if (deviceOrientation === "landscape") {
     a = w;
@@ -176,7 +178,7 @@ function setup() {
   position = [];
   drawing = [];
 
-  bi = 25; //bezier intensity (how far is the achor)
+  bi = .55; //bezier intensity (how far is the achor)
   p_min = 3; //phase lower limit
   p_max = 17; //phase upper limit
 
@@ -248,10 +250,13 @@ function setup_page1() {
   position = [];
   drawing = [];
   var index = 0;
-  radius = min(a,b)/((max(seed_row,seed_column)+1)*2);
+  radius = min(a, b) / ((max(seed_row, seed_column) + 1) * 2);
   for (let i = 0; i < seed_row; i++) {
     for (let j = 0; j < seed_column; j++) {
-      position[index] = createVector(ceil((j+1)*a/(seed_column+1)),ceil((i+1)*b/(seed_row+1)));
+      position[index] = createVector(
+        ceil(((j + 1) * a) / (seed_column + 1)),
+        ceil(((i + 1) * b) / (seed_row + 1))
+      );
       index++;
     }
   }
@@ -268,75 +273,39 @@ function setup_page1() {
 function setup_page2() {
   position = [];
   drawing = [];
+  var w1,w2; // split screen verticaly in Golden ratio
+  var wa; //axis
+  w1 = a / (1 + (1 + sqrt(5)) / 2);
+  w2 = a - w1;
+  wa = [
+    w1 + 1*w2 / 8,
+    w1 + 3*w2 / 8,
+    w1 + 5*w2 / 8,
+    w1 + 7*w2 / 8
+  ];
 
   radius = b / (2 * (2 * horizon + 2));
-  position[0] = createVector(ceil(a / 2), ceil(b / 2)); //central element
+  position[0] = createVector(ceil(w1 / 2), ceil(b / 2)); //central element
   var index = 1;
-  //vertical axis; stop_angle dimension
-  for (let i = 0; i < 2 * horizon; i++) {
-    if (i < horizon) {
-      position[index] = createVector(
-        ceil(a / 2),
-        (i + 1) * ceil(b / (2 * horizon + 2))
-      );
-    } else {
-      position[index] = createVector(
-        ceil(a / 2),
-        (i + 2) * ceil(b / (2 * horizon + 2))
-      );
+  //vertical axis
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 2 * horizon; j++) {
+        position[index] = createVector(
+          ceil(wa[i]),
+          (j + 1) * ceil(b / (2 * horizon + 2))
+        );
+      index++;
     }
-    index++;
-  }
-  //horizontal axis; phase[0] dimension
-  for (let i = 0; i < 2 * horizon; i++) {
-    if (i < horizon) {
-      position[index] = createVector(
-        (i + 1) * ceil(a / (2 * horizon + 2)),
-        ceil(b / 2)
-      );
-    } else {
-      position[index] = createVector(
-        (i + 2) * ceil(a / (2 * horizon + 2)),
-        ceil(b / 2)
-      );
-    }
-    index++;
-  }
-  //top left to bottom right; phase[1] dimension
-  for (let i = 0; i < 2 * horizon; i++) {
-    if (i < horizon) {
-      position[index] = createVector(
-        ceil(a / 2 - ((horizon - i) * a) / ((2 * horizon + 2) * sqrt(2))),
-        ceil(b / 2 - ((horizon - i) * b) / ((2 * horizon + 2) * sqrt(2)))
-      );
-    } else {
-      position[index] = createVector(
-        ceil(a / 2 + ((i + 1 - horizon) * a) / ((2 * horizon + 2) * sqrt(2))),
-        ceil(b / 2 + ((i + 1 - horizon) * b) / ((2 * horizon + 2) * sqrt(2)))
-      );
-    }
-    index++;
-  }
-  //top right to bottom left; phase[2] dimension
-  for (let i = 0; i < 2 * horizon; i++) {
-    if (i < horizon) {
-      position[index] = createVector(
-        ceil(a / 2 + ((horizon - i) * a) / ((2 * horizon + 2) * sqrt(2))),
-        ceil(b / 2 - ((horizon - i) * b) / ((2 * horizon + 2) * sqrt(2)))
-      );
-    } else {
-      position[index] = createVector(
-        ceil(a / 2 - ((i + 1 - horizon) * a) / ((2 * horizon + 2) * sqrt(2))),
-        ceil(b / 2 + ((i + 1 - horizon) * b) / ((2 * horizon + 2) * sqrt(2)))
-      );
-    }
-    index++;
   }
 
   for (let index = 0; index < position.length; index++) {
     drawing[index] = new Drawing();
     drawing[index].reset();
-    drawing[index].radius = radius;
+    if (index == 0) {
+      drawing[index].radius = 0.4*b/2; 
+    } else {
+      drawing[index].radius = 0.6*(b / (2*(2 * horizon + 2)));
+    }
     drawing[index].position = position[index];
     drawing[index].c1 = 0.5;
     drawing[index].c2 = 1 + (1 - drawing[index].c1) / 1.618033988749;
@@ -377,7 +346,7 @@ function draw() {
               position[index].x + 1.5 * radius,
               position[index].y + radius
             );
-          } 
+          }
         }
         active_page.clear = false;
       }
@@ -413,14 +382,14 @@ function draw() {
             drawing[index].c2 *
             drawing[index].radius *
             cos(drawing[index].angle[2]);
-          bx1 = drawing[index].bx1;
-          by1 = drawing[index].by1;
-          bx2 = drawing[index].bx2;
-          by2 = drawing[index].by2;
-          bx3 = drawing[index].bx3;
-          by3 = drawing[index].by3;
-          bx4 = drawing[index].bx4;
-          by4 = drawing[index].by4;
+          bx1 = drawing[index].bx1*sin(drawing[index].angle[0]);
+          by1 = drawing[index].by1*cos(drawing[index].angle[0]);
+          bx2 = drawing[index].bx2*sin(drawing[index].angle[1]);
+          by2 = drawing[index].by2*cos(drawing[index].angle[1]);
+          bx3 = drawing[index].bx3*sin(drawing[index].angle[1]);
+          by3 = drawing[index].by3*cos(drawing[index].angle[1]);
+          bx4 = drawing[index].bx4*sin(drawing[index].angle[2]);
+          by4 = drawing[index].by4*cos(drawing[index].angle[2]);
 
           bezier(x1, y1, x1 + bx1, y1 + by1, x2 + bx2, y2 + by2, x2, y2);
           bezier(x3, y3, x3 + bx3, y3 + by3, x4 + bx4, y4 + by4, x4, y4);
