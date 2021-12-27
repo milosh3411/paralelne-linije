@@ -175,7 +175,7 @@ function setup() {
     b = w;
   }
 
-  text_on = false;
+  text_on = true;
 
   seed_row = 5;
   seed_column = 7;
@@ -188,7 +188,7 @@ function setup() {
   p_max = 17; //phase upper limit
 
   step = 0.5;
-  horizon = 3; //number of drawings to be displayed in front (or behind) the selected drawing per dimension axis
+  horizon = 2; //number of drawings to be displayed in front (or behind) the selected drawing per dimension axis
 
   //if (
   //  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -287,7 +287,6 @@ function setup_page2() {
     w1 + (7 * w2) / 8,
   ];
 
-  radius = b / (2 * (2 * horizon + 2));
   position[0] = createVector(ceil(w1 / 2), ceil(b / 2)); //central element
   var index = 1;
   //vertical axis
@@ -295,7 +294,8 @@ function setup_page2() {
     for (let j = 0; j < 2 * horizon; j++) {
       position[index] = createVector(
         ceil(wa[i]),
-        (j + 1) * ceil(b / (2 * horizon + 2))
+        //(j + 1) * ceil(b / (2 * horizon + 2))
+        ceil(0.1*b+((2*j +1)*0.8*b)/(4*horizon))
       );
       index++;
     }
@@ -307,7 +307,7 @@ function setup_page2() {
       drawing[index].radius = (0.4 * b) / 2;
       drawing[index].strokeweight = 2;
     } else {
-      drawing[index].radius = 0.6 * (b / (2 * (2 * horizon + 2)));
+      drawing[index].radius = 0.55*(b / (4*horizon));
     }
     drawing[index].position = position[index];
     drawing[index].reset();
@@ -335,18 +335,23 @@ function draw() {
           for (let index = 0; index < position.length; index++) {
             text(
               "phase0: " + drawing[index].phase[0],
-              position[index].x + 1.5 * radius,
+              position[index].x + radius,
               position[index].y + radius - 30
             );
             text(
               "phase1: " + drawing[index].phase[1],
-              position[index].x + 1.5 * radius,
+              position[index].x + radius,
               position[index].y + radius - 15
             );
             text(
               "phase2: " + drawing[index].phase[2],
-              position[index].x + 1.5 * radius,
+              position[index].x + radius,
               position[index].y + radius
+            );
+            text(
+              "stop_angle: " + drawing[index].stop_angle,
+              position[index].x + radius,
+              position[index].y + radius +15
             );
           }
         }
