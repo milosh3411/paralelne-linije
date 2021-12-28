@@ -12,7 +12,7 @@ var text_on;
 var radius, c1, c2, bi, p_min, p_max;
 var drawing, selected;
 var seed_row, seed_column; //number of rows and columns in the seed page (page1)
-var step, horizon;
+var step, horizon, stop_angle_step;
 
 // Button class -----------------------------------------------------------------
 function Button(x, y, r, str) {
@@ -39,6 +39,7 @@ Button.prototype.is_pressed = function (x, y) {
 // Menu class -----------------------------------------------------------------
 function Menu() {
   this.button = [];
+  this.drawn = false;
 }
 
 Menu.prototype.draw = function () {
@@ -67,7 +68,9 @@ function Page() {
 
 Page.prototype.drawMenu = function () {
   if (this.menu) {
-    this.menu.draw();
+    if (!this.menu.drawn) {
+      this.menu.draw();
+    }
   }
 };
 
@@ -146,9 +149,8 @@ Drawing.prototype.increment = function () {
       this.counter *
         min(abs(this.phase[0]), abs(this.phase[1]), abs(this.phase[2])) <
         this.stop_angle &&
-      this.counter *
-        min(abs(this.phase[0]), abs(this.phase[1]), abs(this.phase[2])) >
-        step
+      min(abs(this.phase[0]), abs(this.phase[1]), abs(this.phase[2])) >
+        horizon * step
     ) {
       this.angle[0] += this.phase[0];
       this.angle[1] += this.phase[1];
@@ -183,12 +185,13 @@ function setup() {
   position = [];
   drawing = [];
 
-  bi = 17; //bezier intensity (how far is the achor)
+  bi = 20; //bezier intensity (how far is the achor)
   p_min = 3; //phase lower limit
-  p_max = 17; //phase upper limit
+  p_max = 20; //phase upper limit
 
   step = 0.5;
-  horizon = 2; //number of drawings to be displayed in front (or behind) the selected drawing per dimension axis
+  stop_angle_step = 15; //step to increase the stop_angle
+  horizon = 3; //number of drawings to be displayed in front (or behind) the selected drawing per dimension axis
 
   //if (
   //  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -223,26 +226,76 @@ function setup() {
   active_page = page0;
 
   // page1 - seed page-----------------------------------------------------------------
+  reset_seed = new Button(0.9 * a, 0.1 * b, 0.025 * b, "");
+  reset_seed.draw = function () {
+    noStroke();
+    fill(63, 34, 15, 20);
+    ellipse(this.x, this.y, 2 * this.radius);
+    stroke(185, 19, 39, 100);
+    strokeWeight(5);
+    //strokeCap(PROJECT)
+    var x1, y1, x2, y2, x3, y3, d;
+    d = 2*this.radius*.5;
+
+
+    strokeJoin(ROUND);
+    arc(this.x, this.y, d, d, 0, 3*HALF_PI);
+    strokeJoin(MITER);
+    //strokeWeight(3);
+    line(this.x,this.y - 0.5*d, this.x, this.y - 0.3*d);
+    line(this.x,this.y - 0.5*d, this.x - 0.3*d, this.y - 0.5*d);
+    //line(x3, y3, xa2, ya2);
+  };
+
+  reset_seed.action = function () {
+    setup_page1();
+    page1.clear = true;
+    active_page = page1;
+    redraw();
+  };
+  menu_p1 = new Menu();
+  menu_p1.button = [reset_seed];
   page1 = new Page();
+  page1.menu = menu_p1;
   page1.clear = true;
   setup_page1();
 
   // page2 - explore page-----------------------------------------------------------------
-  b_reset = new Button(0.9 * a, 0.1 * b, 0.1 * b, "");
-  b_reset.draw = function () {
+  back_to_seed = new Button(0.9 * a, 0.1 * b, 0.025 * b, "");
+  back_to_seed.draw = function () {
     noStroke();
-    fill(147, 162, 155, 100);
-    ellipse(this.x, this.y, this.radius);
+    fill(63, 34, 15, 20);
+    ellipse(this.x, this.y, 2 * this.radius);
+    stroke(185, 19, 39, 100);
+    strokeWeight(5);
+    //strokeCap(PROJECT)
+    var x1, y1, x2, y2, x3, y3, xa1, ya1, xa2, ya2;
+    x1 = this.x - 0.3 * this.radius;
+    x2 = this.x + 0.3 * this.radius;
+    x3 = this.x - 0.3 * this.radius;
+    y1 = this.y + 0.33 * this.radius;
+    y2 = this.y + 0.33 * this.radius;
+    y3 = this.y - 0.33 * this.radius;
+    xa1 = x3 - 0.15 * this.radius;
+    ya1 = y3 + 0.15 * this.radius;
+    xa2 = x3 + 0.15 * this.radius;
+    ya2 = y3 + 0.15 * this.radius;
+    strokeJoin(ROUND);
+    bezier(x3, y3, x1, y1, x1, y1, x2, y2);
+    //strokeJoin(MITER);
+    strokeWeight(3);
+    line(x3, y3, xa1, ya1);
+    line(x3, y3, xa2, ya2);
   };
 
-  b_reset.action = function () {
+  back_to_seed.action = function () {
     setup_page1();
     page1.clear = true;
     active_page = page1;
     redraw();
   };
   menu_p2 = new Menu();
-  menu_p2.button = [b_reset];
+  menu_p2.button = [back_to_seed];
   page2 = new Page();
   page2.menu = menu_p2;
   page2.clear = true;
@@ -254,6 +307,10 @@ function setup() {
 function setup_page1() {
   position = [];
   drawing = [];
+
+  reset_seed.x = a - 2.5 * reset_seed.radius;
+  reset_seed.y = ceil(b / 2);
+  
   var index = 0;
   radius = min(a, b) / ((max(seed_row, seed_column) + 1) * 2);
   for (let i = 0; i < seed_row; i++) {
@@ -281,11 +338,15 @@ function setup_page2() {
   w1 = a / (1 + (1 + sqrt(5)) / 2);
   w2 = a - w1;
   wa = [
-    w1 + (1 * w2) / 8,
-    w1 + (3 * w2) / 8,
-    w1 + (5 * w2) / 8,
-    w1 + (7 * w2) / 8,
+    w1 + 0.2 * w2 + (1 * 0.6 * w2) / 8,
+    w1 + 0.2 * w2 + (3 * 0.6 * w2) / 8,
+    w1 + 0.2 * w2 + (5 * 0.6 * w2) / 8,
+    w1 + 0.2 * w2 + (7 * 0.6 * w2) / 8,
   ];
+
+  //back_to_seed.x = ceil((a+ w1 + 0.2 * w2 + (7 * 0.6 * w2) / 8 + 0.5 * (b / (4 * horizon)))/2);
+  back_to_seed.x = a - 2.5 * back_to_seed.radius;
+  back_to_seed.y = ceil(b / 2);
 
   position[0] = createVector(ceil(w1 / 2), ceil(b / 2)); //central element
   var index = 1;
@@ -295,7 +356,7 @@ function setup_page2() {
       position[index] = createVector(
         ceil(wa[i]),
         //(j + 1) * ceil(b / (2 * horizon + 2))
-        ceil(0.1*b+((2*j +1)*0.8*b)/(4*horizon))
+        ceil(0.1 * b + ((2 * j + 1) * 0.8 * b) / (4 * horizon))
       );
       index++;
     }
@@ -307,7 +368,7 @@ function setup_page2() {
       drawing[index].radius = (0.4 * b) / 2;
       drawing[index].strokeweight = 2;
     } else {
-      drawing[index].radius = 0.55*(b / (4*horizon));
+      drawing[index].radius = 0.5 * (b / (4 * horizon));
     }
     drawing[index].position = position[index];
     drawing[index].reset();
@@ -321,6 +382,9 @@ function draw() {
       if (active_page.clear) {
         background(17, 24, 19);
         active_page.clear = false;
+        if (active_page.menu) {
+          active_page.menu.drawn = false;
+        }
       }
       active_page.drawMenu();
       break;
@@ -351,7 +415,7 @@ function draw() {
             text(
               "stop_angle: " + drawing[index].stop_angle,
               position[index].x + radius,
-              position[index].y + radius +15
+              position[index].y + radius + 15
             );
           }
         }
@@ -450,15 +514,22 @@ function mouseReleased() {
               //for phase[] dimensions (first three axis)
               drawing[index].phase[i - 1] += (horizon - j) * step;
             } else {
-              drawing[index].stop_angle += (horizon - j) * step * 100;
+              if (drawing[index].stop_angle < 360) {
+                drawing[index].stop_angle += (horizon - j) * stop_angle_step;
+              }
             }
           } else {
             //negative side of axis...
             if (i != 0) {
               //for phase[] dimensions (first three axis)
-              drawing[index].phase[i - 1] += (horizon - j - 1) * step;
+              if (drawing[index].phase[i - 1] > horizon * step) {
+                drawing[index].phase[i - 1] += (horizon - j - 1) * step;
+              }
             } else {
-              drawing[index].stop_angle += (horizon - j - 1) * step * 100;
+              if (drawing[index].stop_angle > horizon * stop_angle_step) {
+                drawing[index].stop_angle +=
+                  (horizon - j - 1) * stop_angle_step;
+              }
             }
           }
           index++;
